@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101828">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Mon argent">
+<title>Mes dépenses et revenus</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#101828; --orange:#FF7A00; --yellow:#FFB300; --paper:#FAFAF7;
+    --line:#E4E0D8; --muted:#667085; --green:#12805C; --card:#FFFFFF;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Manrope',system-ui,sans-serif;background:var(--paper);color:var(--ink);padding-bottom:110px}
+  .wrap{max-width:640px;margin:0 auto;padding:0 16px}
+
+  header{background:var(--ink);color:#fff;padding:18px 0 20px}
+  header .appname{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--yellow)}
+  .monthbar{display:flex;align-items:center;justify-content:space-between;margin-top:8px}
+  .monthbar h1{font-size:24px;font-weight:800;text-transform:capitalize}
+  .navbtn{width:42px;height:42px;border-radius:50%;border:1.5px solid rgba(255,255,255,.35);background:transparent;color:#fff;font-size:20px;cursor:pointer;line-height:1}
+  .navbtn:active{background:rgba(255,255,255,.15)}
+  .curtoggle{display:flex;background:rgba(255,255,255,.12);border-radius:999px;padding:4px;margin-top:14px}
+  .curtoggle button{flex:1;border:none;background:transparent;color:#fff;font-family:inherit;font-weight:700;font-size:14px;padding:8px 0;border-radius:999px;cursor:pointer}
+  .curtoggle button.actif{background:var(--orange);color:#fff}
+
+  #demoBanner{display:none;background:#FFF3E0;border-bottom:2px solid var(--yellow);color:#7A4A00;font-size:13.5px;line-height:1.45;padding:10px 0}
+  #demoBanner.visible{display:block}
+  #demoBanner b{font-weight:800}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-top:16px}
+  .reste-label{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+  #tReste{font-size:40px;font-weight:800;line-height:1.1;margin:4px 0 2px}
+  .reste-sub{font-size:13px;color:var(--muted)}
+  .totgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:14px}
+  .totbox{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:10px}
+  .totbox .lab{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .totbox .val{font-size:17px;font-weight:800;margin-top:3px}
+  .totbox .val.in{color:var(--green)} .totbox .val.out{color:#B42318} .totbox .val.save{color:#B54708}
+  .savings-line{margin-top:14px;border-top:1px dashed var(--line);padding-top:12px;display:flex;justify-content:space-between;align-items:baseline}
+  .savings-line .lab{font-size:13px;font-weight:700;color:var(--muted)}
+  #tEpargneTotal{font-size:19px;font-weight:800;color:#B54708}
+
+  h2.sect-title{font-size:16px;font-weight:800;margin:22px 0 4px}
+  .sect{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-top:10px}
+  .sect-head{display:flex;justify-content:space-between;align-items:baseline}
+  .sect-head .name{font-weight:800;font-size:15px}
+  .sect-head .sum{font-weight:800;font-size:15px}
+  .sect .mini{font-size:13px;color:var(--muted);margin-top:6px;line-height:1.5}
+  .sect-total{margin-top:10px;border-top:1px solid var(--line);padding-top:8px;display:flex;justify-content:space-between;font-weight:800;font-size:14px}
+  .grand-total{margin-top:12px;background:var(--ink);color:#fff;border-radius:14px;padding:13px 14px;display:flex;justify-content:space-between;font-weight:800;font-size:15px}
+  .empty{color:var(--muted);font-size:14px;margin-top:10px}
+
+  .entree{display:flex;justify-content:space-between;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-top:8px;cursor:pointer;width:100%;text-align:left;font-family:inherit}
+  .entree:active{border-color:var(--orange)}
+  .entree .left{min-width:0}
+  .entree .t1{font-weight:700;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .entree .t2{font-size:12.5px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .entree .amt{font-weight:800;font-size:15px;white-space:nowrap}
+  .amt.plus{color:var(--green)} .amt.minus{color:#B42318} .amt.save{color:#B54708}
+  .tag{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;border-radius:6px;padding:1px 6px;margin-right:6px;vertical-align:1px}
+  .tag.dep{background:#FDECEA;color:#B42318} .tag.rev{background:#E6F4EA;color:var(--green)} .tag.epa{background:#FFF3E0;color:#B54708}
+
+  .actionbar{position:fixed;left:0;right:0;bottom:0;background:rgba(250,250,247,.97);border-top:1px solid var(--line);padding:10px 12px calc(10px + env(safe-area-inset-bottom));z-index:40}
+  .actionbar .row{max-width:640px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  .abtn{border:none;border-radius:999px;padding:14px 6px;font-family:inherit;font-weight:800;font-size:15px;cursor:pointer}
+  #btnAjoutDepense{background:var(--ink);color:#fff}
+  #btnAjoutRevenu{background:var(--orange);color:#fff}
+  #btnAjoutEpargne{background:var(--yellow);color:var(--ink)}
+
+  .overlay{position:fixed;inset:0;background:rgba(16,24,40,.5);display:none;z-index:50}
+  .overlay.visible{display:block}
+  .sheet{position:fixed;left:0;right:0;bottom:0;background:#fff;border-radius:20px 20px 0 0;padding:20px 18px calc(20px + env(safe-area-inset-bottom));z-index:51;display:none;max-width:640px;margin:0 auto}
+  .sheet.visible{display:block}
+  .sheet h3{font-size:18px;font-weight:800;margin-bottom:14px}
+  .field{margin-bottom:12px}
+  .field label{display:block;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+  .field input,.field select{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:12px;font-family:inherit;font-size:16px;background:#fff;color:var(--ink)}
+  .field input:focus,.field select:focus{outline:none;border-color:var(--orange)}
+  .sheet .btnrow{display:flex;gap:10px;margin-top:6px}
+  #btnEnregistrer{flex:1;background:var(--orange);color:#fff;border:none;border-radius:999px;padding:14px;font-family:inherit;font-weight:800;font-size:15px;cursor:pointer}
+  #btnAnnuler{background:#fff;border:1.5px solid var(--line);border-radius:999px;padding:14px 18px;font-family:inherit;font-weight:700;font-size:15px;cursor:pointer}
+  #btnSupprimer{display:none;width:100%;margin-top:12px;background:#fff;border:1.5px solid #F1B8B3;color:#B42318;border-radius:999px;padding:12px;font-family:inherit;font-weight:800;font-size:14px;cursor:pointer}
+  #btnSupprimer.visible{display:block}
+  #statut{text-align:center;font-size:13px;color:var(--muted);margin-top:14px;min-height:18px}
+</style>
+</head>
+<body>
+
+<div id="demoBanner">
+  <div class="wrap"><b>Mode démonstration.</b> Tes entrées sont enregistrées sur cet appareil seulement, pour tester. Après l'installation du kit, la page se branchera à ton Google Sheet et tes vraies données vivront là, chez toi.</div>
+</div>
+
+<header>
+  <div class="wrap">
+    <div class="appname">Mes dépenses et revenus</div>
+    <div class="monthbar">
+      <button class="navbtn" id="moisPrec" type="button" aria-label="Mois précédent">‹</button>
+      <h1 id="moisLabel">Mois</h1>
+      <button class="navbtn" id="moisSuiv" type="button" aria-label="Mois suivant">›</button>
+    </div>
+    <div class="curtoggle" role="group" aria-label="Devise affichée">
+      <button id="curCAD" type="button" class="actif">$ CAD</button>
+      <button id="curFCFA" type="button">FCFA</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="card" aria-label="Résumé du mois">
+    <div class="reste-label">Reste disponible</div>
+    <div id="tReste">0,00 $</div>
+    <div class="reste-sub">Revenus, moins les dépenses, moins l'épargne du mois affiché.</div>
+    <div class="totgrid">
+      <div class="totbox"><div class="lab">Entré</div><div class="val in" id="tEntre">0,00 $</div></div>
+      <div class="totbox"><div class="lab">Dépensé</div><div class="val out" id="tDepense">0,00 $</div></div>
+      <div class="totbox"><div class="lab">Épargne du mois</div><div class="val save" id="tEpargne">0,00 $</div></div>
+    </div>
+    <div class="savings-line">
+      <span class="lab">Total épargné depuis le début</span>
+      <span id="tEpargneTotal">0,00 $</span>
+    </div>
+  </section>
+
+  <h2 class="sect-title">Dépenses par section</h2>
+  <div id="sectionsDepenses"></div>
+  <div class="grand-total"><span>Total général des dépenses du mois</span><span id="tGrandTotal">0,00 $</span></div>
+
+  <h2 class="sect-title">Revenus par source</h2>
+  <div id="sectionsRevenus"></div>
+
+  <h2 class="sect-title">Épargne par destination</h2>
+  <div id="sectionsEpargne"></div>
+
+  <h2 class="sect-title">Entrées du mois</h2>
+  <div id="listeEntrees"></div>
+  <div id="statut" role="status"></div>
+</main>
+
+<div class="actionbar">
+  <div class="row">
+    <button class="abtn" id="btnAjoutDepense" type="button">+ Dépense</button>
+    <button class="abtn" id="btnAjoutRevenu" type="button">+ Revenu</button>
+    <button class="abtn" id="btnAjoutEpargne" type="button">+ Épargne</button>
+  </div>
+</div>
+
+<div class="overlay" id="overlay"></div>
+<form class="sheet" id="formSheet">
+  <h3 id="fTitre">Nouvelle entrée</h3>
+  <div class="field">
+    <label for="fMontant">Montant</label>
+    <input id="fMontant" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0,00" required>
+  </div>
+  <div class="field">
+    <label for="fSection" id="fSectionLabel">Section</label>
+    <select id="fSection"></select>
+  </div>
+  <div class="field">
+    <label for="fDevise">Devise</label>
+    <select id="fDevise">
+      <option value="CAD">$ CAD</option>
+      <option value="FCFA">FCFA</option>
+    </select>
+  </div>
+  <div class="field">
+    <label for="fDate">Date</label>
+    <input id="fDate" type="date" required>
+  </div>
+  <div class="field">
+    <label for="fNote">Note (optionnel)</label>
+    <input id="fNote" type="text" placeholder="Ex. courses de la semaine">
+  </div>
+  <div class="btnrow">
+    <button id="btnAnnuler" type="button">Annuler</button>
+    <button id="btnEnregistrer" type="submit">Enregistrer</button>
+  </div>
+  <button id="btnSupprimer" type="button">Supprimer cette entrée</button>
+</form>
+
+<script>
+// Adresse de l'application Web Apps Script, à remplir après l'installation
+// (étape de déploiement du guide). Vide = mode démonstration sur cet appareil.
+const APPS_SCRIPT_URL = "";
+
+const SECTIONS_DEPENSES = ["Manger dehors", "Groceries", "Achats", "Abonnements mensuels", "MSP", "Transport", "Logement et factures", "Loisirs", "Hubcreate", "Autre"];
+const SOURCES_REVENUS = ["Travail étudiant", "Projets clients"];
+const DESTINATIONS_EPARGNE = ["Wealthsimple", "CELI (TFSA)", "Autre épargne"];
+const MOIS_NOMS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
+const DEMO_CLE = "tableau-argent-demo-v1";
+const CODE_CLE = "tableau-argent-code";
+const MODE_DEMO = APPS_SCRIPT_URL === "";
+
+let entrees = [];
+let vueAnnee, vueMois; // mois affiché, mois de 0 à 11
+let deviseVue = "CAD";
+let formType = "Dépense";
+let editionId = null;
+
+const $ = (id) => document.getElementById(id);
+
+function aujourdhuiISO() {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, "0");
+  return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
+}
+function cleMois(y, m) { return y + "-" + String(m + 1).padStart(2, "0"); }
+function esc(s) {
+  return String(s || "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+function fmt(montant, devise) {
+  const neg = montant < 0;
+  const abs = Math.abs(montant);
+  let texte;
+  if (devise === "FCFA") {
+    texte = new Intl.NumberFormat("fr-CA", { maximumFractionDigits: 0 }).format(Math.round(abs)) + " FCFA";
+  } else {
+    texte = new Intl.NumberFormat("fr-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(abs) + " $";
+  }
+  return (neg ? "-" : "") + texte;
+}
+function statut(msg) { $("statut").textContent = msg || ""; }
+
+// ---------- Couche données ----------
+function chargerDemo() {
+  try { entrees = JSON.parse(localStorage.getItem(DEMO_CLE) || "[]"); }
+  catch (e) { entrees = []; }
+  if (!Array.isArray(entrees)) entrees = [];
+}
+function sauverDemo() { localStorage.setItem(DEMO_CLE, JSON.stringify(entrees)); }
+
+function codeAcces() {
+  let code = localStorage.getItem(CODE_CLE);
+  if (!code) {
+    code = window.prompt("Entre ton code d'accès au tableau (demandé une seule fois) :") || "";
+    if (code) localStorage.setItem(CODE_CLE, code);
+  }
+  return code;
+}
+async function api(action, extra) {
+  const corps = Object.assign({ action: action, code: codeAcces() }, extra || {});
+  let rep;
+  if (action === "lister") {
+    rep = await fetch(APPS_SCRIPT_URL + "?action=lister&code=" + encodeURIComponent(corps.code));
+  } else {
+    rep = await fetch(APPS_SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(corps)
+    });
+  }
+  const data = await rep.json();
+  if (!data.ok) {
+    if (data.erreur === "Accès refusé") {
+      localStorage.removeItem(CODE_CLE);
+      throw new Error("Accès refusé. Recharge la page et entre le bon code.");
+    }
+    throw new Error(data.erreur || "Erreur inconnue");
+  }
+  return data.entrees;
+}
+async function recharger() {
+  if (MODE_DEMO) { chargerDemo(); return; }
+  statut("Chargement…");
+  try { entrees = await api("lister"); statut(""); }
+  catch (e) { statut(e.message); }
+}
+async function envoyer(action, payload) {
+  if (MODE_DEMO) {
+    if (action === "ajouter") {
+      payload.entree.id = "demo-" + Date.now() + "-" + Math.floor(Math.random() * 100000);
+      entrees.push(payload.entree);
+    } else if (action === "modifier") {
+      const i = entrees.findIndex((e) => String(e.id) === String(payload.entree.id));
+      if (i >= 0) entrees[i] = payload.entree;
+    } else if (action === "supprimer") {
+      entrees = entrees.filter((e) => String(e.id) !== String(payload.id));
+    }
+    sauverDemo();
+    return;
+  }
+  statut("Enregistrement…");
+  try { entrees = await api(action, payload); statut(""); }
+  catch (e) { statut(e.message); }
+}
+
+// ---------- Calculs ----------
+function entreesDuMois() {
+  const cle = cleMois(vueAnnee, vueMois);
+  return entrees.filter((e) => String(e.Date).slice(0, 7) === cle);
+}
+function somme(liste, type, devise) {
+  return liste
+    .filter((e) => e.Type === type && e.Devise === devise)
+    .reduce((t, e) => t + (Number(e.Montant) || 0), 0);
+}
+
+// ---------- Affichage ----------
+function blocSections(type, listeSections, conteneurId, ligneCloture) {
+  const mois = entreesDuMois();
+  const cont = $(conteneurId);
+  cont.innerHTML = "";
+  let totalGeneral = 0;
+  listeSections.forEach((nom) => {
+    const items = mois.filter((e) => e.Type === type && e.Section === nom && e.Devise === deviseVue);
+    if (!items.length) return;
+    const total = items.reduce((t, e) => t + (Number(e.Montant) || 0), 0);
+    totalGeneral += total;
+    const div = document.createElement("div");
+    div.className = "sect";
+    const mini = items.map((e) => esc(e.Note || e.Date.slice(8, 10) + "/" + e.Date.slice(5, 7)) + " · " + fmt(Number(e.Montant) || 0, deviseVue)).join("<br>");
+    div.innerHTML =
+      '<div class="sect-head"><span class="name">' + esc(nom) + '</span><span class="sum">' + fmt(total, deviseVue) + "</span></div>" +
+      '<div class="mini">' + mini + "</div>" +
+      '<div class="sect-total"><span>' + esc(ligneCloture) + '</span><span>' + fmt(total, deviseVue) + "</span></div>";
+    cont.appendChild(div);
+  });
+  if (!cont.children.length) cont.innerHTML = '<p class="empty">Rien ce mois ci dans cette devise.</p>';
+  return totalGeneral;
+}
+
+function afficher() {
+  $("moisLabel").textContent = MOIS_NOMS[vueMois] + " " + vueAnnee;
+  $("curCAD").classList.toggle("actif", deviseVue === "CAD");
+  $("curFCFA").classList.toggle("actif", deviseVue === "FCFA");
+
+  const mois = entreesDuMois();
+  const entre = somme(mois, "Revenu", deviseVue);
+  const depense = somme(mois, "Dépense", deviseVue);
+  const epargne = somme(mois, "Épargne", deviseVue);
+  $("tEntre").textContent = fmt(entre, deviseVue);
+  $("tDepense").textContent = fmt(depense, deviseVue);
+  $("tEpargne").textContent = fmt(epargne, deviseVue);
+  $("tReste").textContent = fmt(entre - depense - epargne, deviseVue);
+  const totalEpargne = entrees
+    .filter((e) => e.Type === "Épargne" && e.Devise === deviseVue)
+    .reduce((t, e) => t + (Number(e.Montant) || 0), 0);
+  $("tEpargneTotal").textContent = fmt(totalEpargne, deviseVue);
+
+  const totalDep = blocSections("Dépense", SECTIONS_DEPENSES, "sectionsDepenses", "Total de la section");
+  $("tGrandTotal").textContent = fmt(totalDep, deviseVue);
+  blocSections("Revenu", SOURCES_REVENUS, "sectionsRevenus", "Total de la source");
+  blocSections("Épargne", DESTINATIONS_EPARGNE, "sectionsEpargne", "Total de la destination");
+
+  const cont = $("listeEntrees");
+  cont.innerHTML = "";
+  const triees = mois.slice().sort((a, b) => (String(b.Date) + String(b.id)).localeCompare(String(a.Date) + String(a.id)));
+  if (!triees.length) cont.innerHTML = '<p class="empty">Aucune entrée ce mois ci. Ajoute ta première dépense, ton premier revenu ou ta première épargne avec les boutons en bas.</p>';
+  triees.forEach((e) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "entree";
+    btn.dataset.id = e.id;
+    const tag = e.Type === "Dépense" ? '<span class="tag dep">Dépense</span>' : e.Type === "Revenu" ? '<span class="tag rev">Revenu</span>' : '<span class="tag epa">Épargne</span>';
+    const signe = e.Type === "Dépense" ? "-" : "+";
+    const cls = e.Type === "Dépense" ? "minus" : e.Type === "Revenu" ? "plus" : "save";
+    btn.innerHTML =
+      '<span class="left"><span class="t1">' + tag + esc(e.Section) + "</span>" +
+      '<span class="t2">' + esc(e.Date) + (e.Note ? " · " + esc(e.Note) : "") + "</span></span>" +
+      '<span class="amt ' + cls + '">' + signe + fmt(Number(e.Montant) || 0, e.Devise) + "</span>";
+    btn.addEventListener("click", () => ouvrirFormulaire(e.Type, e));
+    cont.appendChild(btn);
+  });
+}
+
+// ---------- Formulaire ----------
+function optionsPour(type) {
+  return type === "Dépense" ? SECTIONS_DEPENSES : type === "Revenu" ? SOURCES_REVENUS : DESTINATIONS_EPARGNE;
+}
+function ouvrirFormulaire(type, entree) {
+  formType = type;
+  editionId = entree ? entree.id : null;
+  $("fTitre").textContent = entree ? "Modifier l'entrée" : type === "Dépense" ? "Nouvelle dépense" : type === "Revenu" ? "Nouveau revenu" : "Nouvelle épargne";
+  $("fSectionLabel").textContent = type === "Dépense" ? "Section" : type === "Revenu" ? "Source" : "Destination";
+  const sel = $("fSection");
+  sel.innerHTML = "";
+  optionsPour(type).forEach((nom) => {
+    const opt = document.createElement("option");
+    opt.value = nom; opt.textContent = nom;
+    sel.appendChild(opt);
+  });
+  $("fMontant").value = entree ? entree.Montant : "";
+  $("fSection").value = entree ? entree.Section : optionsPour(type)[0];
+  $("fDevise").value = entree ? entree.Devise : deviseVue;
+  $("fDate").value = entree ? entree.Date : aujourdhuiISO();
+  $("fNote").value = entree ? entree.Note || "" : "";
+  $("btnSupprimer").classList.toggle("visible", !!entree);
+  $("overlay").classList.add("visible");
+  $("formSheet").classList.add("visible");
+}
+function fermerFormulaire() {
+  $("overlay").classList.remove("visible");
+  $("formSheet").classList.remove("visible");
+  editionId = null;
+}
+
+$("formSheet").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const montant = parseFloat($("fMontant").value);
+  if (isNaN(montant) || montant < 0) { window.alert("Entre un montant valide."); return; }
+  const entree = {
+    id: editionId,
+    Date: $("fDate").value || aujourdhuiISO(),
+    Type: formType,
+    Section: $("fSection").value,
+    Montant: montant,
+    Devise: $("fDevise").value,
+    Note: $("fNote").value.trim()
+  };
+  if (editionId !== null && editionId !== undefined) {
+    await envoyer("modifier", { entree: entree, ligne: editionId });
+  } else {
+    await envoyer("ajouter", { entree: entree });
+  }
+  fermerFormulaire();
+  afficher();
+});
+$("btnSupprimer").addEventListener("click", async () => {
+  if (editionId === null) return;
+  await envoyer("supprimer", { id: editionId, ligne: editionId });
+  fermerFormulaire();
+  afficher();
+});
+$("btnAnnuler").addEventListener("click", fermerFormulaire);
+$("overlay").addEventListener("click", fermerFormulaire);
+$("btnAjoutDepense").addEventListener("click", () => ouvrirFormulaire("Dépense", null));
+$("btnAjoutRevenu").addEventListener("click", () => ouvrirFormulaire("Revenu", null));
+$("btnAjoutEpargne").addEventListener("click", () => ouvrirFormulaire("Épargne", null));
+$("moisPrec").addEventListener("click", () => { vueMois--; if (vueMois < 0) { vueMois = 11; vueAnnee--; } afficher(); });
+$("moisSuiv").addEventListener("click", () => { vueMois++; if (vueMois > 11) { vueMois = 0; vueAnnee++; } afficher(); });
+$("curCAD").addEventListener("click", () => { deviseVue = "CAD"; afficher(); });
+$("curFCFA").addEventListener("click", () => { deviseVue = "FCFA"; afficher(); });
+
+// ---------- Démarrage ----------
+(function init() {
+  const d = new Date();
+  vueAnnee = d.getFullYear();
+  vueMois = d.getMonth();
+  if (MODE_DEMO) $("demoBanner").classList.add("visible");
+  recharger().then(afficher);
+})();
+</script>
+</body>
+</html>
