@@ -246,16 +246,16 @@ function codeAcces() {
 }
 async function api(action, extra) {
   const corps = Object.assign({ action: action, code: codeAcces() }, extra || {});
-  let rep;
-  if (action === "lister") {
-    rep = await fetch(APPS_SCRIPT_URL + "?action=lister&code=" + encodeURIComponent(corps.code));
-  } else {
-    rep = await fetch(APPS_SCRIPT_URL, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify(corps)
-    });
-  }
+  // Toutes les actions passent en POST, y compris "lister" : le GET vers
+  // Apps Script traverse une redirection que Safari laisse tomber sur
+  // certains iPhone (la lecture revenait vide alors que les écritures,
+  // déjà en POST, arrivaient bien dans le classeur). Le doPost du script
+  // gère déjà "lister" et renvoie la même liste, aucun redéploiement requis.
+  const rep = await fetch(APPS_SCRIPT_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify(corps)
+  });
   const data = await rep.json();
   if (!data.ok) {
     if (data.erreur === "Accès refusé") {
