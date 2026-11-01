@@ -62,11 +62,11 @@
   .grand-total{margin-top:12px;background:var(--ink);color:#fff;border-radius:14px;padding:13px 14px;display:flex;justify-content:space-between;font-weight:800;font-size:15px}
   .empty{color:var(--muted);font-size:14px;margin-top:10px}
 
-  .entree{display:flex;justify-content:space-between;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-top:8px;cursor:pointer;width:100%;text-align:left;font-family:inherit}
+  .entree{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-top:8px;cursor:pointer;width:100%;text-align:left;font-family:inherit}
   .entree:active{border-color:var(--orange)}
   .entree .left{min-width:0}
-  .entree .t1{font-weight:700;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .entree .t2{font-size:12.5px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .entree .t1{display:block;font-weight:700;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .entree .t2{display:block;font-size:12.5px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .entree .amt{font-weight:800;font-size:15px;white-space:nowrap}
   .amt.plus{color:var(--green)} .amt.minus{color:#B42318} .amt.save{color:#B54708}
   .tag{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;border-radius:6px;padding:1px 6px;margin-right:6px;vertical-align:1px}
@@ -244,6 +244,10 @@ function aujourdhuiISO() {
   const p = (n) => String(n).padStart(2, "0");
   return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
 }
+function dateFr(iso) {
+  const mm = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return mm ? mm[3] + "/" + mm[2] + "/" + mm[1] : String(iso || "");
+}
 function cleMois(y, m) { return y + "-" + String(m + 1).padStart(2, "0"); }
 function esc(s) {
   return String(s || "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -418,7 +422,7 @@ function afficher() {
     const cls = e.Type === "Dépense" ? "minus" : e.Type === "Revenu" ? "plus" : "save";
     btn.innerHTML =
       '<span class="left"><span class="t1">' + tag + esc(e.Section) + "</span>" +
-      '<span class="t2">' + esc(e.Date) + (e.Note ? " · " + esc(e.Note) : "") + "</span></span>" +
+      '<span class="t2">' + esc(dateFr(e.Date)) + (e.Note ? " · " + esc(e.Note) : "") + "</span></span>" +
       '<span class="amt ' + cls + '">' + signe + fmt(Number(e.Montant) || 0, e.Devise) + "</span>";
     btn.addEventListener("click", () => ouvrirFormulaire(e.Type, e));
     cont.appendChild(btn);
@@ -488,21 +492,34 @@ $("overlay").addEventListener("click", fermerFormulaire);
 $("btnAjoutDepense").addEventListener("click", () => ouvrirFormulaire("Dépense", null));
 $("btnAjoutRevenu").addEventListener("click", () => ouvrirFormulaire("Revenu", null));
 $("btnAjoutEpargne").addEventListener("click", () => ouvrirFormulaire("Épargne", null));
-$("btnExporter").addEventListener("click", () => {
-  if (!entrees.length) { statut("Aucune entrée à exporter pour le moment."); return; }
+$("btnExporter").addEventListener("click", async () => {
+  if (!entrees.length) { statut("Aucune entrée à exporter pour le moment. Ajoute une première entrée, puis exporte."); return; }
   const cell = (v) => "\"" + String(v == null ? "" : v).replace(/"/g, "\"\"") + "\"";
   const lignes = ["Date,Type,Section,Montant,Devise,Note"];
   [...entrees].sort((a, b) => String(a.Date).localeCompare(String(b.Date))).forEach((e) => {
     lignes.push([e.Date, e.Type, e.Section, e.Montant, e.Devise, e.Note || ""].map(cell).join(","));
   });
-  const blob = new Blob(["\uFEFF" + lignes.join("\r\n")], { type: "text/csv;charset=utf-8" });
+  const contenu = "\uFEFF" + lignes.join("\r\n");
+  const nom = "mon-bilan-export-" + aujourdhuiISO() + ".csv";
+  const fichier = new File([contenu], nom, { type: "text/csv;charset=utf-8" });
+  if (navigator.canShare && navigator.canShare({ files: [fichier] })) {
+    try {
+      await navigator.share({ files: [fichier], title: "Mon Bilan" });
+      statut("Export envoyé: " + entrees.length + " entrée(s).");
+      return;
+    } catch (e) {
+      if (e && e.name === "AbortError") { statut("Export annulé."); return; }
+    }
+  }
+  const blob = new Blob([contenu], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "mon-bilan-export-" + aujourdhuiISO() + ".csv";
+  a.href = url;
+  a.download = nom;
   document.body.appendChild(a);
   a.click();
   a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
   statut("Fichier CSV téléchargé: " + entrees.length + " entrée(s).");
 });
 $("lockCode").addEventListener("input", () => {
