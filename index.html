@@ -7,8 +7,10 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Mon argent">
-<title>Mes dépenses et revenus</title>
+<meta name="apple-mobile-web-app-title" content="Mon Bilan">
+<title>Mon Bilan</title>
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+<link rel="apple-touch-icon" href="icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -22,7 +24,9 @@
   .wrap{max-width:640px;margin:0 auto;padding:0 16px}
 
   header{background:var(--ink);color:#fff;padding:18px 0 20px}
-  header .appname{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--yellow)}
+  header .appname{font-size:20px;font-weight:800;letter-spacing:.01em;color:#fff}
+  .brand{display:flex;align-items:center;gap:12px}
+  .brandlogo{width:54px;height:54px;object-fit:contain;background:#fff;border-radius:14px;padding:4px;flex:none}
   .monthbar{display:flex;align-items:center;justify-content:space-between;margin-top:8px}
   .monthbar h1{font-size:24px;font-weight:800;text-transform:capitalize}
   .navbtn{width:42px;height:42px;border-radius:50%;border:1.5px solid rgba(255,255,255,.35);background:transparent;color:#fff;font-size:20px;cursor:pointer;line-height:1}
@@ -100,7 +104,7 @@
 
 <header>
   <div class="wrap">
-    <div class="appname">Mes dépenses et revenus</div>
+    <div class="brand"><img class="brandlogo" src="Modern%20Spreadsheet%20Finance%20App%20Logo.png" alt="Logo Mon Bilan"><div class="appname">Mon Bilan</div></div>
     <div class="monthbar">
       <button class="navbtn" id="moisPrec" type="button" aria-label="Mois précédent">‹</button>
       <h1 id="moisLabel">Mois</h1>
@@ -149,6 +153,7 @@
     <button class="abtn" id="btnAjoutDepense" type="button">+ Dépense</button>
     <button class="abtn" id="btnAjoutRevenu" type="button">+ Revenu</button>
     <button class="abtn" id="btnAjoutEpargne" type="button">+ Épargne</button>
+    <button class="abtn" id="btnExporter" type="button">Exporter (CSV)</button>
   </div>
 </div>
 
@@ -433,6 +438,23 @@ $("overlay").addEventListener("click", fermerFormulaire);
 $("btnAjoutDepense").addEventListener("click", () => ouvrirFormulaire("Dépense", null));
 $("btnAjoutRevenu").addEventListener("click", () => ouvrirFormulaire("Revenu", null));
 $("btnAjoutEpargne").addEventListener("click", () => ouvrirFormulaire("Épargne", null));
+$("btnExporter").addEventListener("click", () => {
+  if (!entrees.length) { statut("Aucune entrée à exporter pour le moment."); return; }
+  const cell = (v) => "\"" + String(v == null ? "" : v).replace(/"/g, "\"\"") + "\"";
+  const lignes = ["Date,Type,Section,Montant,Devise,Note"];
+  [...entrees].sort((a, b) => String(a.Date).localeCompare(String(b.Date))).forEach((e) => {
+    lignes.push([e.Date, e.Type, e.Section, e.Montant, e.Devise, e.Note || ""].map(cell).join(","));
+  });
+  const blob = new Blob(["\uFEFF" + lignes.join("\r\n")], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "mon-bilan-export-" + aujourdhuiISO() + ".csv";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  statut("Fichier CSV téléchargé: " + entrees.length + " entrée(s).");
+});
 $("moisPrec").addEventListener("click", () => { vueMois--; if (vueMois < 0) { vueMois = 11; vueAnnee--; } afficher(); });
 $("moisSuiv").addEventListener("click", () => { vueMois++; if (vueMois > 11) { vueMois = 0; vueAnnee++; } afficher(); });
 $("curCAD").addEventListener("click", () => { deviseVue = "CAD"; afficher(); });
