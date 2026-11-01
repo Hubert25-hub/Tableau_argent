@@ -94,9 +94,37 @@
   #btnSupprimer{display:none;width:100%;margin-top:12px;background:#fff;border:1.5px solid #F1B8B3;color:#B42318;border-radius:999px;padding:12px;font-family:inherit;font-weight:800;font-size:14px;cursor:pointer}
   #btnSupprimer.visible{display:block}
   #statut{text-align:center;font-size:13px;color:var(--muted);margin-top:14px;min-height:18px}
+
+  #lockScreen{display:none;position:fixed;inset:0;background:var(--paper);z-index:100;padding:24px 16px;overflow:auto}
+  #lockScreen.visible{display:block}
+  .lock-card{max-width:400px;margin:6vh auto 0}
+  .lock-logo{width:76px;height:76px;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:18px;padding:6px}
+  .lock-card h1{font-size:34px;font-weight:800;margin:18px 0 6px}
+  .lock-sub{color:var(--muted);font-size:15px;margin-bottom:22px}
+  #lockForm label{display:block;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+  #lockCode{width:100%;border:1.5px solid var(--line);border-radius:12px;padding:14px;font-family:inherit;font-size:24px;font-weight:700;letter-spacing:10px;text-align:center;background:#fff;color:var(--ink)}
+  #lockCode:focus{outline:none;border-color:var(--orange)}
+  #lockErreur{display:none;color:#B42318;font-size:14px;font-weight:600;margin-top:10px}
+  #lockErreur.visible{display:block}
+  #lockBtn{width:100%;margin-top:18px;background:var(--orange);color:#fff;border:none;border-radius:999px;padding:15px;font-family:inherit;font-weight:800;font-size:16px;cursor:pointer}
+  #lockBtn:disabled{opacity:.6}
 </style>
 </head>
 <body>
+
+<div id="lockScreen">
+  <div class="lock-card">
+    <img class="lock-logo" src="Modern%20Spreadsheet%20Finance%20App%20Logo.png" alt="Logo Mon Bilan">
+    <h1>Bonjour.</h1>
+    <p class="lock-sub">Entre ton code PIN à 4 chiffres pour ouvrir ton bilan.</p>
+    <form id="lockForm">
+      <label for="lockCode">Code PIN</label>
+      <input id="lockCode" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="••••">
+      <div id="lockErreur" role="alert"></div>
+      <button id="lockBtn" type="submit">Continuer</button>
+    </form>
+  </div>
+</div>
 
 <div id="demoBanner">
   <div class="wrap"><b>Mode démonstration.</b> Tes entrées sont enregistrées sur cet appareil seulement, pour tester. Après l'installation du kit, la page se branchera à ton Google Sheet et tes vraies données vivront là, chez toi.</div>
@@ -242,12 +270,32 @@ function chargerDemo() {
 function sauverDemo() { localStorage.setItem(DEMO_CLE, JSON.stringify(entrees)); }
 
 function codeAcces() {
-  let code = localStorage.getItem(CODE_CLE);
-  if (!code) {
-    code = window.prompt("Entre ton code d'accès au tableau (demandé une seule fois) :") || "";
-    if (code) localStorage.setItem(CODE_CLE, code);
+  return localStorage.getItem(CODE_CLE) || "";
+}
+function montrerVerrou(message) {
+  if (message) {
+    const e = $("lockErreur");
+    e.textContent = message;
+    e.classList.add("visible");
   }
-  return code;
+  $("lockScreen").classList.add("visible");
+  document.body.style.overflow = "hidden";
+  setTimeout(() => { try { $("lockCode").focus(); } catch (e) {} }, 60);
+}
+function cacherVerrou() {
+  $("lockScreen").classList.remove("visible");
+  document.body.style.overflow = "";
+  $("lockErreur").classList.remove("visible");
+}
+async function tenterCode(code) {
+  const rep = await fetch(APPS_SCRIPT_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({ action: "lister", code: code })
+  });
+  const data = await rep.json();
+  if (!data.ok) throw new Error(data.erreur || "Erreur inconnue");
+  return data.entrees;
 }
 async function api(action, extra) {
   const corps = Object.assign({ action: action, code: codeAcces() }, extra || {});
@@ -265,7 +313,8 @@ async function api(action, extra) {
   if (!data.ok) {
     if (data.erreur === "Accès refusé") {
       localStorage.removeItem(CODE_CLE);
-      throw new Error("Accès refusé. Recharge la page et entre le bon code.");
+      montrerVerrou("Ton code enregistré n'est plus accepté. Entre ton code PIN.");
+      throw new Error("Accès refusé.");
     }
     throw new Error(data.erreur || "Erreur inconnue");
   }
@@ -273,6 +322,7 @@ async function api(action, extra) {
 }
 async function recharger() {
   if (MODE_DEMO) { chargerDemo(); return; }
+  if (!codeAcces()) { montrerVerrou(); return; }
   statut("Chargement…");
   try { entrees = await api("lister"); statut(""); }
   catch (e) { statut(e.message); }
@@ -454,6 +504,40 @@ $("btnExporter").addEventListener("click", () => {
   a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   statut("Fichier CSV téléchargé: " + entrees.length + " entrée(s).");
+});
+$("lockCode").addEventListener("input", () => {
+  const champ = $("lockCode");
+  champ.value = champ.value.replace(/\D/g, "").slice(0, 4);
+  if (champ.value.length === 4 && !$("lockBtn").disabled) $("lockForm").requestSubmit();
+});
+$("lockForm").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const btn = $("lockBtn");
+  if (btn.disabled) return;
+  const code = $("lockCode").value.trim();
+  const er = $("lockErreur");
+  if (!/^\d{4}$/.test(code)) {
+    er.textContent = "Entre un code PIN à 4 chiffres.";
+    er.classList.add("visible");
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = "Vérification…";
+  er.classList.remove("visible");
+  try {
+    entrees = await tenterCode(code);
+    localStorage.setItem(CODE_CLE, code);
+    $("lockCode").value = "";
+    cacherVerrou();
+    afficher();
+    statut("");
+  } catch (e) {
+    er.textContent = e.message === "Accès refusé" ? "Code incorrect. Réessaie." : "Connexion impossible. Réessaie.";
+    er.classList.add("visible");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Continuer";
+  }
 });
 $("moisPrec").addEventListener("click", () => { vueMois--; if (vueMois < 0) { vueMois = 11; vueAnnee--; } afficher(); });
 $("moisSuiv").addEventListener("click", () => { vueMois++; if (vueMois > 11) { vueMois = 0; vueAnnee++; } afficher(); });
